@@ -1,7 +1,9 @@
 const express = require("express")
 const router = express.Router()
 const db = require("../db")
+const slugify = require("slugify")
 
+// get all invoices
 router.get('/', async (req, res) => {
     try {
         const invoices = await db.query(`SELECT * FROM invoices`)
@@ -11,6 +13,7 @@ router.get('/', async (req, res) => {
     }
 })
 
+// get one invoice
 router.get('/:id', async (req,res) => {
     try {
         const invoice = await db.query(`SELECT * FROM invoices WHERE id=$1`,[req.params.id])
@@ -20,6 +23,7 @@ router.get('/:id', async (req,res) => {
     }
 })
 
+// add an invoice
 router.post('/', async (req,res) => {
     try {
         const { id, comp_code, amt, paid, add_date, paid_date } = req.body
@@ -30,21 +34,31 @@ router.post('/', async (req,res) => {
     }
 })
 
+// update an invoice
 router.put('/:id', async (req,res) => {
-    const idParam = req.params.id
+    const id = req.params.id
     try {
-        const invoice = await db.query(`SELECT * FROM invoices WHERE id=$1`, [idParam])
+        const invoice = await db.query(`SELECT * FROM invoices WHERE id=$1`, [id])
         if(!invoice.rows[0].id){
             return
         }
-        const { id, comp_code, amt, paid, add_date, paid_date } = req.body
-        const addedInvoice = await db.query(`UPDATE invoices SET id=$1, comp_code=$2, amt=$3, paid=$4, add_date=$5, paid_date=$6 WHERE id=$7 RETURNING *`, [id, comp_code, amt, paid, add_date, paid_date, idParam])
+        const { amt, paid } = req.body
+        const isPaid = invoice.rows[0].paid
+
+        if(!isPaid && paid){
+            await db.query(`UPDATE invoices SET paid=$1, paid_date=CURRENT_DATE WHERE id=$2`, [paid, id])
+        } else if(isPaid && !paid) {
+            await db.query(`UPDATE invoices SET paid=$1, paid_date=null WHERE id=$2`, [paid, id])
+        } 
+        const addedInvoice = await db.query(`UPDATE invoices SET amt=$1 WHERE id=$2 RETURNING *`, [amt, id])
         return res.json({"invoice": addedInvoice.rows[0]})
     } catch (error) {
-        return res.status(404).send("Sorry couldn't update invoice")
+        console.log(error)
+        return res.send(error)
     }
 })
 
+// delete an invoice
 router.delete('/:id', async (req,res) => {
     try {
         const invoice = await db.query(`DELETE FROM invoices WHERE id=$1 RETURNING *`, [req.params.id])
@@ -57,6 +71,5 @@ router.delete('/:id', async (req,res) => {
     }
 })
 
-router.get('/')
 
 module.exports = router

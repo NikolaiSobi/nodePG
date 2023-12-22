@@ -1,22 +1,20 @@
 /** Database setup for BizTime. */
 const { Client } = require("pg");
-
+require("dotenv").config()
 
 let DB_URI;
 
+// process.env.DATABASE should equal "postgresql://user:password@host:5432/database"
 if (process.env.NODE_ENV === "test") {
-  DB_URI = "postgresql:///biztime_test";
+  DB_URI = process.env.DATABASE_TEST;
 } else {
-  DB_URI = "postgresql:///biztime";
+  DB_URI = process.env.DATABASE;
 }
 
+
 let db = new Client({
-    // host: Enter host here example "localhost",
-    // user: Enter user here example "username",
-    // port: Enter port here example 5432,
-    // password: Enter password here example "password123!",
-    // database: Enter database here example "biztime"
-})
+  connectionString: DB_URI,
+});
 
 db.connect((err) => {
   if (err) {
